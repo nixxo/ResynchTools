@@ -16,3 +16,11 @@ v3.1  : fix controllo minimum blank (non fa il controllo quando i sub si sovrapp
 
 v3.1.1: aggiunto controllo VSSCore.GetSubCount() all'impostazione del PdS [segnalato da red5]
         corretto errore 'ReferenceError: Resynch is not defined' [segnalato da marylena]
+
+v3.2  : tolto comando #Procedi e relative impostazioni
+        aggiunto parametro AutoReset e relativi controlli [richiesto da red5]
+        aggiunto controllo icona per ultimo punto di sincronia
+        corretto Resync in Resynch [segnalato da marylena]
+        modificato comando #Reset
+
+v3.2.1: corretto refuso v3.1 in descrizione plugin [segnalato da marylena]
