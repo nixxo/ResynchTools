@@ -1,72 +1,105 @@
-// Italian Subs Addicted - Prova Resynch
-// by nixxo v1.1
+// Italian Subs Addicted - Resynch Tools
+// by nixxo v2
 
-/*Imposta inizio resynch*/
-JSAction_Imposta_Inizio = {
+JSAction_Imposta_Punto_Sincronia = {
   onExecute : function() {
-    //salva posizione primo sub
-    try { VSSCore.SetPluginParamValue('ResynchTemp', 'ID_Inizio',VSSCore.GetFirstSelected().Index);}
-    catch (err) { ScriptLog('Selezionare Sub Inizio');}
-    /* Da provare per primo sub non in synch
-    try { VSSCore.SetPluginParamValue('ResynchTemp', 'Shift_Inizio',VSSCore.GetGursorPosition());}
-    catch (err) { ScriptLog('Selezionare Cursore');}
-    */
-    VSSCore.DisableJavascriptItemMenu('#Inizio');
-    VSSCore.EnableJavascriptItemMenu('#Fine');
+    //legge numero punti di sincronia gia' salvati
+    var NumeroPdS = VSSCore.GetPluginParamValue('ResynchTemp', 'NumeroPdS');
+    //salva il sottotitolo selezionato
+    var PdS = VSSCore.GetFirstSelected();
+    
+    ScriptLog('N:'+NumeroPdS+' .P:'+PdS.Index);
+    
+    //Salvo ID del sottotitolo selezionato e shift associato
+    VSSCore.SetPluginParamValue('ResynchTemp', 'ID_Pds'+NumeroPdS, PdS.Index);
+    VSSCore.SetPluginParamValue('ResynchTemp', 'Shift'+NumeroPdS, VSSCore.GetCursorPosition()-PdS.Start);
+    //Incremento il numero di punti di sincronia di uno
+    VSSCore.SetPluginParamValue('ResynchTemp', 'NumeroPdS', NumeroPdS+1);
+    
+    //se sono stati fatti almeno 2 punti di sincronia abilita manu #Procedi
+    if (NumeroPdS >= 1) VSSCore.EnableJavascriptItemMenu('Desynch->#Procedi');
+    VSSCore.EnableJavascriptItemMenu('Desynch->#Reset');
   }
 };
 
-JSAction_Imposta_Fine = {
+JSAction_Procedi = {
   onExecute : function() {
-    //salva posizione ultimo sub
-    var Sub_Inizio, Sub_Fine, Shift_Inizio, Shift_Fine;
-    try { Sub_Fine = VSSCore.GetFirstSelected();} catch(err) { ScriptLog('Selezionare Sub Fine');}
-    
-    //salva ultimo shift
-    Shift = VSSCore.GetCursorPosition()-Sub_Fine.Start;
-    
-    Sub_Inizio = VSSCore.GetSubAt(VSSCore.GetPluginParamValue('ResynchTemp', 'ID_Inizio')-1);
-    //Da provare per primo sub non in synch
-    //Shift_Inizio = VSSCore.GetPluginParamValue('ResynchTemp', 'Shift_Inizio')-Sub_Inizio.Start;
-    
-    ScriptLog('Inizio: '+Sub_Inizio.Index);
-    ScriptLog('Fine: '+Sub_Fine.Index);
-    //ScriptLog('Shift_I[ms]: '+Shift_Inizio);
-    ScriptLog('Shift_F[ms]: '+Shift);
-    
-    //ScriptLog('-----------------');
-    //inizializzazione variabili
-    var sub = Sub_Inizio;
-    var Inizio = Sub_Inizio.Start
-    var Fine = Sub_Fine.Index
-    var FineI = Sub_Fine.Start;
-    var temp_shift;
-    while (sub != null) {
-      //se il sub e' nel range da modificare calcola shift
-      if(sub.Index <= Fine) {
-        //ScriptLog('ID_Proc: '+sub.Index);
-        //ScriptLog(Inizio+':'+FineI+':'+Shift);
-        temp_shift = Calcola_Shift(sub.Start, Inizio, FineI, Shift);
-        sub.Start = sub.Start + temp_shift;
-        //ScriptLog('Shift_start: '+temp_shift);
-        temp_shift = Calcola_Shift(sub.Stop, Inizio, FineI, Shift);
-        sub.Stop = sub.Stop + temp_shift;
-        //ScriptLog('Shift_stop: '+temp_shift);
-        //ScriptLog(sub.Index+'::'+Fine);
-        //ScriptLog('****');
-      }
-      //altrimenti aggiunge solo shift
-      else {
-        sub.Start = sub.Start + Shift;
-        sub.Stop = sub.Stop + Shift;
-      }
-      sub = VSSCore.GetNext(sub);
+    //ciclo lettura punti di sincronia salvati
+    var NumeroPdS = VSSCore.GetPluginParamValue('ResynchTemp', 'NumeroPdS');
+    var PuntiSincronia = new Array();
+    for (var i=0; i<NumeroPdS; i++) {
+      PuntiSincronia[i] = new Array();
+      PuntiSincronia[i][0] = VSSCore.GetPluginParamValue('ResynchTemp', 'ID_Pds'+i);
+      PuntiSincronia[i][1] = VSSCore.GetPluginParamValue('ResynchTemp', 'Shift'+i);
     }
-    ScriptLog('-----------------');
-    VSSCore.DisableJavascriptItemMenu('#Fine');
-    VSSCore.EnableJavascriptItemMenu('#Inizio');
+    
+    //Ordina Array dei punti di sincronia in base all'ID del sottotitolo
+    PuntiSincronia.sort(OrdinaNumeri);
+    //e azzera shift del primo punto di sincronia
+    PuntiSincronia[0][1] = 0;
+    
+    //ciclo calcolo shift
+    for(var Contatore=0; Contatore < NumeroPdS-1; Contatore++) {
+      
+      //Inizializza le te variabili necessarie per il resynch
+      var Sub_Inizio = VSSCore.GetSubAt(PuntiSincronia[Contatore][0]-1);
+      var Sub_Fine = VSSCore.GetSubAt(PuntiSincronia[Contatore+1][0]-1);
+      var Shift = PuntiSincronia[Contatore+1][1]-PuntiSincronia[Contatore][1];
+      
+      var sub = Sub_Inizio;
+      var Inizio = Sub_Inizio.Start
+      var Fine = Sub_Fine.Index
+      var FineI = Sub_Fine.Start;
+      var temp_shift;
+      
+      while (sub != null) {
+        //se il sub e' nel range da modificare calcola shift
+        if(sub.Index <= Fine) {
+          //ScriptLog('ID_Proc: '+sub.Index);
+          //ScriptLog(Inizio+':'+FineI+':'+Shift);
+          temp_shift = Calcola_Shift(sub.Start, Inizio, FineI, Shift);
+          sub.Start = sub.Start + temp_shift;
+          //ScriptLog('Shift_start: '+temp_shift);
+          temp_shift = Calcola_Shift(sub.Stop, Inizio, FineI, Shift);
+          sub.Stop = sub.Stop + temp_shift;
+          //ScriptLog('Shift_stop: '+temp_shift);
+          //ScriptLog(sub.Index+'::'+Fine);
+          //ScriptLog('****');
+        }
+        //altrimenti aggiunge solo shift
+        else {
+          sub.Start = sub.Start + Shift;
+          sub.Stop = sub.Stop + Shift;
+        }
+        sub = VSSCore.GetNext(sub);
+      }
+    }
+    
+    
+    
+    ////////////////////////////
+    Reset_Menu();
   }
 };
+
+JSAction_Reset = {
+  onExecute : function() {
+    Reset_Menu();
+  }
+};
+
+function OrdinaNumeri(a,b) {
+  return a[0] - b[0];
+}
+
+function Reset_Menu() {
+  VSSCore.EnableJavascriptItemMenu('Desynch->#PuntoDiSincronia');
+  VSSCore.DisableJavascriptItemMenu('Desynch->#Procedi');
+  VSSCore.DisableJavascriptItemMenu('Desynch->#Reset');
+  //azzera punti di sincronia
+  VSSCore.SetPluginParamValue('ResynchTemp', 'NumeroPdS', 0);
+  //ScriptLog('RESET');
+}
 
 function Calcola_Shift(OR,SubI,SubF,SH) {
   var shift = (OR-SubI)*(SH/(SubF-SubI));
@@ -77,6 +110,11 @@ function Calcola_Shift(OR,SubI,SubF,SH) {
 }
 
 //Registrazione funzioni javasript
-VSSCore.RegisterJavascriptAction('JSAction_Imposta_Inizio', '#Inizio', '');
-VSSCore.RegisterJavascriptAction('JSAction_Imposta_Fine', '#Fine', '');
-VSSCore.DisableJavascriptItemMenu('#Fine');
+VSSCore.RegisterJavascriptAction('JSAction_Imposta_Punto_Sincronia', 'Desynch->#PuntoDiSincronia', '');
+VSSCore.InsertBreakBeforeJavascriptMenuItem('Desynch->#PuntoDiSincronia');
+VSSCore.RegisterJavascriptAction('JSAction_Procedi', 'Desynch->#Procedi', '');
+VSSCore.RegisterJavascriptAction('JSAction_Reset', 'Desynch->#Reset', '');
+VSSCore.InsertBreakAfterJavascriptMenuItem('Desynch->#Reset');
+VSSCore.DisableJavascriptItemMenu('Desynch->#Procedi');
+VSSCore.DisableJavascriptItemMenu('Desynch->#Reset');
+VSSCore.SetPluginParamValue('ResynchTemp', 'NumeroPdS', 0);
