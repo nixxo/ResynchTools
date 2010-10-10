@@ -19,6 +19,7 @@ JSAction_Imposta_Punto_Sincronia = {
     //se sono stati fatti almeno 2 punti di sincronia abilita manu #Procedi
     if (NumeroPdS >= 1) VSSCore.EnableJavascriptItemMenu('Desynch->#Procedi');
     VSSCore.EnableJavascriptItemMenu('Desynch->#Reset');
+    Colora_Sub();
   }
 };
 
@@ -88,6 +89,25 @@ JSAction_Reset = {
   }
 };
 
+function Colora_Sub() {
+  var Colori = ["$99CC00", "$FF3232", "$32FFFF"];
+  var NumeroPdS = VSSCore.GetPluginParamValue('ResynchTemp', 'NumeroPdS');
+  var PuntiSincronia = new Array();
+  for (var i=0; i<NumeroPdS; i++) {
+    PuntiSincronia[i] = new Array();
+    PuntiSincronia[i][0] = VSSCore.GetPluginParamValue('ResynchTemp', 'ID_Pds'+i);
+    PuntiSincronia[i][1] = VSSCore.GetPluginParamValue('ResynchTemp', 'Shift'+i);
+  }
+
+  PuntiSincronia.sort(OrdinaNumeri);
+  //ciclo colora sub
+  var Cont_Colori = 0;
+  for(var Contatore=0; Contatore < NumeroPdS-1; Contatore++) {
+    VSSCore.SetSubColor(PuntiSincronia[Contatore][0], PuntiSincronia[Contatore+1][0], Colori[Cont_Colori++]);
+    if (Cont_Colori >= Colori.length) Cont_Colori = 0;
+  }
+}
+
 function OrdinaNumeri(a,b) {
   return a[0] - b[0];
 }
@@ -98,7 +118,7 @@ function Reset_Menu() {
   VSSCore.DisableJavascriptItemMenu('Desynch->#Reset');
   //azzera punti di sincronia
   VSSCore.SetPluginParamValue('ResynchTemp', 'NumeroPdS', 0);
-  //ScriptLog('RESET');
+  ScriptLog('RESET');
 }
 
 function Calcola_Shift(OR,SubI,SubF,SH) {
