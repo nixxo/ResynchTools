@@ -1,6 +1,6 @@
 // Italian Subs Addicted - Prova Resynch
-// by nixxo
-	
+// by nixxo v1.1
+
 /*Imposta inizio resynch*/
 JSAction_Imposta_Inizio = {
   onExecute : function() {
@@ -11,6 +11,8 @@ JSAction_Imposta_Inizio = {
     try { VSSCore.SetPluginParamValue('ResynchTemp', 'Shift_Inizio',VSSCore.GetGursorPosition());}
     catch (err) { ScriptLog('Selezionare Cursore');}
     */
+    VSSCore.DisableJavascriptItemMenu('#Inizio');
+    VSSCore.EnableJavascriptItemMenu('#Fine');
   }
 };
 
@@ -61,6 +63,8 @@ JSAction_Imposta_Fine = {
       sub = VSSCore.GetNext(sub);
     }
     ScriptLog('-----------------');
+    VSSCore.DisableJavascriptItemMenu('#Fine');
+    VSSCore.EnableJavascriptItemMenu('#Inizio');
   }
 };
 
@@ -75,3 +79,4 @@ function Calcola_Shift(OR,SubI,SubF,SH) {
 //Registrazione funzioni javasript
 VSSCore.RegisterJavascriptAction('JSAction_Imposta_Inizio', '#Inizio', '');
 VSSCore.RegisterJavascriptAction('JSAction_Imposta_Fine', '#Fine', '');
+VSSCore.DisableJavascriptItemMenu('#Fine');
