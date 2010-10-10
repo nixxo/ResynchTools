@@ -1,5 +1,5 @@
 //
-// ITASA - Resync Tools v3
+// ITASA - Resynch Tools v3
 // by nixxo
 //
 
@@ -24,7 +24,7 @@ var Colori = ["$99CC00", "$FF3232", "$32FFFF"];
 var PuntiSincronia = new Array();
 
 //Variabili per la lettura dei parametri del plugin
-var Log = 1, Auto = 1, Col = 1, Ico = 1, PrOK = 1;
+var Log = 1, Col = 1, Ico = 1, PrOK = 1, AR = 0;
 
 //FUNZIONE da aggiungere controlli
 function Imposta_Punto( ssub, del ) {
@@ -35,16 +35,17 @@ function Imposta_Punto( ssub, del ) {
   var i = 0;
   //ciclo che scorre l'array dei punti di sincronia per cercare
   //se è già impostato un punto sullo stesso sottotitolo
-  while( i < PuntiSincronia.length && !trovato ) {
+  while( i < PuntiDiSincronia() && !trovato ) {
     //Se è presente un punto di sincronia sullo stesso sottotitolo
     if ( PuntiSincronia[i][0] == sub.Index ) {
       //Aggiorno lo shift assegnato a quel sottotitolo
       //se non è un punto da cancellare
       if ( !del ) PuntiSincronia[i][1] = VSSCore.GetCursorPosition();
 
-      //Se è un punto da cancellare tolgo l'icona e cancello il punto di sincronia
+      //Se è un punto da cancellare tolgo l'icona
       if (del) VSSCore.SetSubIcon( PuntiSincronia[i][0], 0 );
-      if (del) PuntiSincronia.splice(i,1);
+      //e cancello il punto di sincronia dall'array
+      if (del) PuntiSincronia.splice( i, 1 );
 
       trovato = true;
     }
@@ -52,18 +53,30 @@ function Imposta_Punto( ssub, del ) {
   }
   //Se non esiste un punto di sincronia su quel sottotitolo lo aggiungo
   if ( !trovato ) {
-    var NumeroPdS = PuntiSincronia.length;
-    PuntiSincronia[NumeroPdS] = new Array();
-    PuntiSincronia[NumeroPdS][0] = sub.Index;
-    PuntiSincronia[NumeroPdS][1] = VSSCore.GetCursorPosition();    
-    if ( NumeroPdS == 0 && isPrimoOK() ) PuntiSincronia[NumeroPdS][1] = sub.Start;
-    if ( log(2) ) ScriptLog('Aggiunto nuovo punto di sincronia: '+PuntiSincronia[NumeroPdS][0]);
-    if ( isIcone() ) VSSCore.SetSubIcon( PuntiSincronia[NumeroPdS][0], 1 );
-    if ( isIcone() && NumeroPdS == 0 ) VSSCore.SetSubIcon( PuntiSincronia[NumeroPdS][0], 4 );
+    
+    //Controlla se e' impostato l'auto reset in caso che
+    //il nuovo pnto di sincronia sia esterno al range dei primi due impostati
+    if ( AutoReset() && PuntiDiSincronia() > 1 && sub.Index > PuntiSincronia[PuntiDiSincronia()-1][0] ) {
+      Reset();
+      Imposta_Punto( sub, false );
+    }
+    else {
+      var NumeroPdS = PuntiDiSincronia();
+      PuntiSincronia[NumeroPdS] = new Array();
+      PuntiSincronia[NumeroPdS][0] = sub.Index;
+      PuntiSincronia[NumeroPdS][1] = VSSCore.GetCursorPosition();    
+      if ( NumeroPdS == 0 && isPrimoOK() ) PuntiSincronia[NumeroPdS][1] = sub.Start;
+      if ( log(2) ) ScriptLog( 'Aggiunto nuovo punto di sincronia: ' + PuntiSincronia[NumeroPdS][0] );
+      if ( isIcone() ) VSSCore.SetSubIcon( PuntiSincronia[NumeroPdS][0], 1 );
+      if ( isIcone() && NumeroPdS == 0 ) VSSCore.SetSubIcon( PuntiSincronia[NumeroPdS][0], 4 );  
+    }
   }
   
   //Mantiene ordinato array dei punti di sincronia
   PuntiSincronia.sort( OrdinaNumeri );
+  
+  if ( PuntiDiSincronia() > 1 ) VSSCore.SetSubIcon( PuntiSincronia[PuntiDiSincronia()-1][0], 5 );
+  if ( PuntiDiSincronia() > 2 ) VSSCore.SetSubIcon( PuntiSincronia[PuntiDiSincronia()-2][0], 1 );
   
   if ( isColore() ) Colora_Sub();
   
@@ -73,31 +86,31 @@ function Imposta_Punto( ssub, del ) {
 
 //Funzione che scorrei sottotitoli e applica ad ognuno lo shift
 //in base a dove si trovano rispetto ai punti di sincronia stabiliti
-function Resync() {
+function Resynch() {
     
-  if ( log(1) ) ScriptLog('Calcolando...');
+  if ( log(1) ) ScriptLog( 'Calcolando...' );
   
   var Contatore = 0;
-  var Sub_Inizio= null, Shift_Inizio = null, Sub_Fine = null, Shift_Fine = null, sub = null;
+  var Sub_Inizio = null, Shift_Inizio = null, Sub_Fine = null, Shift_Fine = null, sub = null;
 
   do {
     //Imposta il range di sottotitoli da analizzare
     Sub_Inizio = VSSCore.GetSubAt( PuntiSincronia[Contatore][0] - 1 ).clone();
     Shift_Inizio = PuntiSincronia[Contatore][1] - Sub_Inizio.Start;
-    if ( log(2) ) ScriptLog('SuI: '+Sub_Inizio.Index+' St: '+Sub_Inizio.Start+' Sh: '+Shift_Inizio);
+    if ( log(2) ) ScriptLog( 'SuI: ' + Sub_Inizio.Index + ' St: ' + Sub_Inizio.Start + ' Sh: ' + Shift_Inizio );
     try {
       Sub_Fine = VSSCore.GetSubAt( PuntiSincronia[Contatore+1][0] - 1 ).clone();
       Shift_Fine = PuntiSincronia[Contatore+1][1] - Sub_Fine.Start;
-      if ( log(2) ) ScriptLog('SuF: '+Sub_Fine.Index+' St: '+Sub_Fine.Start+' Sh: '+Shift_Fine);
-    } catch ( err ) { if ( log(2) ) ScriptLog('SuF: null'); }
+      if ( log(2) ) ScriptLog( 'SuF: ' + Sub_Fine.Index + ' St: ' + Sub_Fine.Start + ' Sh: ' + Shift_Fine );
+    } catch ( err ) { if ( log(2) ) ScriptLog( 'SuF: null' ); }
     //Fine impostazione range
     
     //sub e' la variabile che tiene traccia del sottotitolo attaulmente analizzato e scorre
     //tra i due range fino a Sub_Fine
     sub = VSSCore.GetSubAt( Sub_Inizio.Index - 1 );
     
-    if ( log(2) ) ScriptLog('Sub: '+sub.Index);
-    if ( log(2) ) ScriptLog('----------------');      
+    if ( log(2) ) ScriptLog( 'Sub: ' + sub.Index );
+    if ( log(2) ) ScriptLog( '----------------' );      
     var exit = false;
     
     //Entra nel ciclo di modifica dello shift solo se c'è uno shift da applicare
@@ -109,7 +122,7 @@ function Resync() {
         if ( Sub_Fine == null ) {
           //Appplica shift Inizio
           if ( Shift_Inizio != 0 ) {
-            if ( log(2) ) ScriptLog('@Sub Prima o dopo senza fine: '+sub.Index+' SH:'+Shift_Inizio);
+            if ( log(2) ) ScriptLog( '@Sub Prima o dopo senza fine: ' + sub.Index + ' SH:' + Shift_Inizio );
             sub.Start += Shift_Inizio;
             sub.Stop += Shift_Inizio;
           }
@@ -129,7 +142,7 @@ function Resync() {
         else {
           //richiama la funzione che calcola lo shift lineare tra due punti e lo applica allo Start del sottotiolo
           var temp_shift = Calcola_Shift( sub.Start, Sub_Inizio.Start , Sub_Fine.Start, Shift_Inizio, Shift_Fine );
-          if ( log(2) ) ScriptLog('@prog shift: '+sub.Index+':'+temp_shift);
+          if ( log(2) ) ScriptLog( '@prog shift: ' + sub.Index + ':' + temp_shift );
           sub.Start += temp_shift;
           //e fà lo stesso con lo Stop del sottotitolo
           temp_shift = Calcola_Shift( sub.Stop, Sub_Inizio.Start, Sub_Fine.Start, Shift_Inizio, Shift_Fine );
@@ -142,20 +155,20 @@ function Resync() {
               subP.Stop = sub.Start - VSSCore.MinimumBlank;
           } catch ( err ) {}
           
-          if ( log(2) ) ScriptLog('#'+sub.Index+':'+Sub_Fine.Index);
+          if ( log(2) ) ScriptLog( '#' + sub.Index + ':' + Sub_Fine.Index );
           //se il sottotiolo analizzato e' quello prima della fine del range esco dal ciclo
           if ( sub.Index == Sub_Fine.Index-1 ) exit = true;
         }
         
-        if ( log(2) ) ScriptLog('Sub: '+sub.Index);
+        if ( log(2) ) ScriptLog( 'Sub: '+sub.Index );
         sub = VSSCore.GetNext( sub );
       }
     }
 
     Sub_Inizio = Sub_Fine = Shift_Inizio = Shift_Fine = null;
     Contatore++;
-  }while (sub != null)
-    
+  } while ( sub != null )
+  
   if ( log(1) ) ScriptLog('Fatto.');
 }
 
@@ -163,13 +176,13 @@ function Resync() {
 function Reset() {
   VSSCore.ResetSubColor();
   // Cacella icone sui punti di sincronia
-  for ( var i=0; i < PuntiSincronia.length; i++ )
+  for ( var i=0; i < PuntiDiSincronia(); i++ )
     VSSCore.SetSubIcon( PuntiSincronia[i][0], 0 );
   //Imposta icona sull'ultimo punto
   VSSCore.SetSubIcon( PuntiSincronia.pop()[0], 5 );
   //svuota array dei punti di sincronia
-  PuntiSincronia.splice( 0, PuntiSincronia.length );
-  
+  PuntiSincronia.splice( 0, PuntiDiSincronia() );
+    
   if ( log(1) ) Stampa_Array();
 }
   
@@ -177,15 +190,15 @@ function Reset() {
 function Colora_Sub() {
   var Cont_Colori = 0;
   VSSCore.ResetSubColor();
-  for(var Contatore=0; Contatore < PuntiSincronia.length-1; Contatore++) {
-    VSSCore.SetSubColor(PuntiSincronia[Contatore][0], PuntiSincronia[Contatore+1][0], Colori[Cont_Colori++]);
-    if (Cont_Colori >= Colori.length) Cont_Colori = 0;
+  for( var Contatore=0; Contatore < PuntiDiSincronia()-1; Contatore++ ) {
+    VSSCore.SetSubColor( PuntiSincronia[Contatore][0], PuntiSincronia[Contatore+1][0], Colori[Cont_Colori++] );
+    if ( Cont_Colori >= Colori.length ) Cont_Colori = 0;
   }
 }
 
 //Funzione accessoria alla funzione .sort() degli array
 //necessaria all'ordinamento crescente rispetto all'indice 0
-function OrdinaNumeri(a,b) {
+function OrdinaNumeri( a, b ) {
   return a[0] - b[0];
 }
 
@@ -193,25 +206,25 @@ function OrdinaNumeri(a,b) {
 //OR = punto originale a cui applicare lo shift
 //SubI, SubF = Estremi su cui calcolare lo shift
 //ShI, ShF = Shift iniziale o shift finale
-function Calcola_Shift(OR, SubI, SubF, ShI, ShF) {
+function Calcola_Shift( OR, SubI, SubF, ShI, ShF ) {
   if ( ShI == 0 ) {
-    var shift = (OR-SubI)*(ShF/(SubF-SubI));
+    var shift = ( OR - SubI ) * ( ShF / ( SubF - SubI ) );
     //controllo per shift negativo
-    if (ShF < 0) return shift < ShF ? ShF : Math.round(shift);
-    return shift < ShF ? Math.round(shift) : ShF;
+    if ( ShF < 0 ) return shift < ShF ? ShF : Math.round( shift );
+    return shift < ShF ? Math.round( shift ) : ShF;
   }
-  var shift = (SubF-OR)*(ShI/(SubF-SubI));
+  var shift = ( SubF - OR ) * ( ShI / ( SubF - SubI ) );
   //controllo per shift negativo
-  if (ShI < 0) return shift < ShI ? ShI : Math.round(shift);
-  return shift < ShI ? Math.round(shift) : ShI;
+  if ( ShI < 0 ) return shift < ShI ? ShI : Math.round( shift );
+  return shift < ShI ? Math.round( shift ) : ShI;
 }
 
 //Stampa su console elenco dei punti di sincronia
 function Stampa_Array() {
-  ScriptLog('----------------');
-  for (var i=0; i < PuntiSincronia.length; i++)
-    ScriptLog(PuntiSincronia[i][0]+' | '+PuntiSincronia[i][1]);
-  ScriptLog('----------------');
+  ScriptLog( '----------------' );
+  for ( var i=0; i < PuntiDiSincronia(); i++ )
+    ScriptLog( PuntiSincronia[i][0] + ' | ' + PuntiSincronia[i][1] );
+  ScriptLog( '----------------' );
 }
 
 //Ritorna il numero dei punti di sincronia
@@ -221,27 +234,27 @@ function PuntiDiSincronia() {
 
 
 //Funzioni che ritornano i valori delli dai parametri del plugin
-function isAuto() {
-  try { Auto = VSSCore.GetPluginParamValue('ITASA - Resync Tools Parameters', 'ParamAuto'); } catch (err) {}
-  return Auto == 1 ? true : false;
+function AutoReset() {
+  try { AR = VSSCore.GetPluginParamValue('ITASA - Resynch Tools Parameters', 'ParamAutoReset'); } catch (err) {}
+  return AR == 1 ? true : false;
 }
 
 function isColore() {
-  try { Col = VSSCore.GetPluginParamValue('ITASA - Resync Tools Parameters', 'ParamColore'); } catch (err) {}
+  try { Col = VSSCore.GetPluginParamValue('ITASA - Resynch Tools Parameters', 'ParamColore'); } catch (err) {}
   return Col == 1 ? true : false;
 }
 
 function isIcone() {
-  try { Ico = VSSCore.GetPluginParamValue('ITASA - Resync Tools Parameters', 'ParamIcone'); } catch (err) {}
+  try { Ico = VSSCore.GetPluginParamValue('ITASA - Resynch Tools Parameters', 'ParamIcone'); } catch (err) {}
   return Ico == 1 ? true : false;
 }
 
 function log( level ) {
-  try { Log = VSSCore.GetPluginParamValue('ITASA - Resync Tools Parameters', 'ParamLog'); } catch (err) {}
+  try { Log = VSSCore.GetPluginParamValue('ITASA - Resynch Tools Parameters', 'ParamLog'); } catch (err) {}
   return Log == level ? true : false;
 }
 
 function isPrimoOK() {
-  try { PrOK = VSSCore.GetPluginParamValue('ITASA - Resync Tools Parameters', 'ParamPrimoSubOK'); } catch (err) {}
+  try { PrOK = VSSCore.GetPluginParamValue('ITASA - Resynch Tools Parameters', 'ParamPrimoSubOK'); } catch (err) {}
   return PrOK == 1 ? true : false;
 }
