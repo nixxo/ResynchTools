@@ -5,6 +5,14 @@ Consente una più rapida resincronizzazione dei sottotitoli su versioni di video 
 ChangeLog
 v1.0  : versione iniziale
 v1.1  : aggiunte funzioni abilitazione/disabilitazione voci del menu
+
 v2.0  : nuova versione
         aggiunta la possibilita di impostare piu' punti di sincronia
 v2.1  : aggiunta colorazione dei sottotitoli
+
+v3.0  : nuova versione
+
+v3.1  : fix controllo minimum blank (non fa il controllo quando i sub si sovrappongono)
+
+v3.1.1: aggiunto controllo VSSCore.GetSubCount() all'impostazione del PdS [segnalato da red5]
+        corretto errore 'ReferenceError: Resynch is not defined' [segnalato da marylena]
